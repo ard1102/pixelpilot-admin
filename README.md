@@ -62,22 +62,22 @@ Simple admin dashboard and public gallery for triaging images. Includes table an
 
 ### Sync from local (Windows → Ubuntu server)
 - Copy images:
-  - `scp -r images rd@192.168.0.100:/home/rd/photo-admin/images`
+  - `scp -r images <user>@<host>:/home/<user>/photo-admin/images`
 - Copy database:
-  - `scp site.db rd@192.168.0.100:/home/rd/photo-admin/site.db`
+  - `scp site.db <user>@<host>:/home/<user>/photo-admin/site.db`
 - Ingest or refresh images in the app:
-  - `cd /home/rd/photo-admin && docker compose exec web python load_images.py`
+  - `cd <remote_project_path> && docker compose exec web python load_images.py`
 
 ### Sync from local (Linux/macOS → Ubuntu server)
 - Copy images:
-  - `rsync -av --progress images/ rd@192.168.0.100:/home/rd/photo-admin/images/`
+  - `rsync -av --progress images/ <user>@<host>:/home/<user>/photo-admin/images/`
 - Copy database:
-  - `scp site.db rd@192.168.0.100:/home/rd/photo-admin/site.db`
+  - `scp site.db <user>@<host>:/home/<user>/photo-admin/site.db`
 - Ingest images:
-  - `ssh rd@192.168.0.100 "cd /home/rd/photo-admin && docker compose exec web python load_images.py"`
+  - `ssh <user>@<host> "cd <remote_project_path> && docker compose exec web python load_images.py"`
 
 ## Admin Dashboard
-- Access: `http://localhost:5000/admin?token=admin123`
+- Access: `http://localhost:5000/admin?token=<your-token>`
 - Filter by status with the Pending/Approved/Trash buttons.
 - Switch views:
   - Table View: shows filename, status, price input and Save.
@@ -159,8 +159,8 @@ services:
 ```
 - Save and Deploy.
 - Web UI access:
-  - Home: `http://192.168.0.100:5000/`
-  - Admin: `http://192.168.0.100:5000/admin?token=<your-token>`
+  - Home: `http://<host>:5000/`
+  - Admin: `http://<host>:5000/admin?token=<your-token>`
 
 ### Updating in Coolify
 - Edit Docker Compose in the app, Save, and Redeploy when `docker-compose.yml` changes.
