@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PixelPilot Admin – Image Triage</title>
+    <style>
+      :root { --accent: #2962ff; --danger: #d32f2f; --ok: #2e7d32; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; }
+      .container { max-width: 1100px; margin: 0 auto; }
+      h1 { font-size: 1.6rem; margin-bottom: 0.75rem; }
+      .filters { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+      .btn { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; }
+      .btn.primary { border-color: var(--accent); color: var(--accent); }
+      .btn.ok { border-color: var(--ok); color: var(--ok); }
+      .btn.danger { border-color: var(--danger); color: var(--danger); }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
+      th { background: #fafafa; }
+      code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; }
+      .status { font-weight: 600; }
+      .price-input { width: 90px; }
+      .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+      .note { color: #555; margin-bottom: 1rem; }
+      /* Thumbnail */
+      .thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid #eee; }
+      /* Card view */
+      .view-toggle { display: flex; gap: 8px; margin-bottom: 12px; }
+      .toggle-active { background: #eef3ff; border-color: var(--accent); color: var(--accent); }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+      .card { border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; }
+      .card img { width: 100%; height: 300px; object-fit: cover; display: block; }
+      .card-body { padding: 10px; }
+      .card .meta { font-size: 12px; color: #555; margin-bottom: 6px; }
+      .card-image { position: relative; cursor: zoom-in; }
+      .status-badge { position: absolute; top: 8px; right: 8px; padding: 4px 8px; border-radius: 999px; font-size: 12px; color: #fff; background: #777; text-transform: capitalize; }
+      .status-badge.status-pending { background: #888; }
+      .status-badge.status-approved { background: var(--ok); }
+      .status-badge.status-trash { background: var(--danger); }
+      .price-badge { position: absolute; bottom: 8px; left: 8px; padding: 4px 8px; border-radius: 6px; font-size: 12px; color: #fff; background: rgba(0,0,0,0.6); cursor: pointer; }
+      .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); z-index: 1000; }
+      .modal-content { position: relative; background: #000; padding: 8px; border-radius: 8px; }
+      .modal-content img { max-width: 90vw; max-height: 90vh; display: block; }
+      .modal-close { position: absolute; top: 6px; right: 6px; background: rgba(255,255,255,0.9); border: none; border-radius: 999px; width: 28px; height: 28px; font-size: 18px; cursor: pointer; }
+      /* Price popover */
+      .popover { position: fixed; display: none; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 10px; z-index: 2000; min-width: 220px; transform-origin: top left; animation: pop .12s ease-out; }
+      @keyframes pop { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+      .popover .row { display: flex; gap: 8px; align-items: center; }
+      .popover input { flex: 1; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
+      .popover .btn { padding: 6px 10px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>PixelPilot Admin – Image Triage</h1>
+      <p class="note">Filter: <code>{{ current_filter }}</code>. Use the buttons to switch views and update records.</p>
+
+      <div class="filters">
+        <a class="btn" href="{{ url_for('admin_dashboard') }}?status=pending">Pending</a>
+        <a class="btn ok" href="{{ url_for('admin_dashboard') }}?status=approved">Approved</a>
+        <a class="btn danger" href="{{ url_for('admin_dashboard') }}?status=trash">Trash</a>
+      </div>
+
+      <div class="view-toggle">
+        <button id="view-table" class="btn">Table View</button>
+        <button id="view-cards" class="btn">Card View</button>
+      </div>
+
+      <table id="table-view">
+        <thead>
+          <tr>
+            <th>Preview</th>
+            <th>ID</th>
+            <th>Filename</th>
+            <th>Status</th>
+            <th>Price</th>
+            <th>Date Uploaded</th>
+            <th>Trash Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for img in images %}
+            <tr data-id="{{ img['id'] }}">
+              <td><img class="thumb" src="{{ url_for('serve_image', filename=img['filename']) }}" alt="{{ img['filename'] }}" /></td>
+              <td>{{ img['id'] }}</td>
+              <td><code>{{ img['filename'] }}</code></td>
+              <td class="status">{{ img['status'] }}</td>
+              <td>
+                <input class="price-input" type="number" step="0.01" value="{{ img['price'] if img['price'] is not none else '' }}" />
+                <button class="btn" data-action="save-price">Save</button>
+              </td>
+              <td>{{ img['date_uploaded'] }}</td>
+              <td>{{ img['trash_date'] }}</td>
+              <td class="actions">
+                <button class="btn ok" data-action="set-status" data-status="approved">Approve</button>
+                <button class="btn" data-action="set-status" data-status="pending">Pending</button>
+                <button class="btn danger" data-action="set-status" data-status="trash">Trash</button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div id="card-view" class="grid" style="display:none;">
+        {% for img in images %}
+          <div class="card" data-id="{{ img['id'] }}">
+            <div class="card-image" data-action="open-modal">
+              <img src="{{ url_for('serve_image', filename=img['filename']) }}" alt="{{ img['filename'] }}" />
+              <span class="status-badge status-{{ img['status'] }}">{{ img['status'] }}</span>
+              <span class="price-badge">{% if img['price'] is not none %}{{ '%.2f'|format(img['price']) }}{% else %}--{% endif %}</span>
+            </div>
+            <div class="card-body">
+              <div><code>{{ img['filename'] }}</code></div>
+              <div class="meta">Uploaded: {{ img['date_uploaded'] }}</div>
+              <div class="actions" style="margin-top:8px;">
+                <button class="btn ok" data-action="set-status" data-status="approved">Approve</button>
+                <button class="btn" data-action="set-status" data-status="pending">Pending</button>
+                <button class="btn danger" data-action="set-status" data-status="trash">Trash</button>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div id="image-modal" class="modal" aria-hidden="true">
+      <div class="modal-content">
+        <button class="modal-close" title="Close" data-action="close-modal">×</button>
+        <img id="modal-img" src="" alt="Preview" />
+      </div>
+    </div>
+
+    <!-- Price popover editor -->
+    <div id="price-popover" class="popover" role="dialog" aria-hidden="true">
+      <div class="row">
+        <input id="price-input-popover" type="number" step="0.01" placeholder="Enter price (empty for --)" />
+        <button id="price-cancel-btn" class="btn">Cancel</button>
+        <button id="price-save-btn" class="btn ok">Save</button>
+      </div>
+    </div>
+
+    <script>
+      // Admin token is stored in httponly cookie; do not hardcode.
+      // Find nearest container that has a data-id (works for table rows and cards)
+      function findItem(el) {
+        while (el && el.getAttribute && !el.getAttribute('data-id')) el = el.parentElement;
+        return el;
+      }
+
+      // View mode toggle
+      const tableEl = document.getElementById('table-view');
+      const cardEl = document.getElementById('card-view');
+      const btnTable = document.getElementById('view-table');
+      const btnCards = document.getElementById('view-cards');
+
+      function setView(mode) {
+        const isTable = mode === 'table';
+        tableEl.style.display = isTable ? '' : 'none';
+        cardEl.style.display = isTable ? 'none' : '';
+        btnTable.classList.toggle('toggle-active', isTable);
+        btnCards.classList.toggle('toggle-active', !isTable);
+        try { localStorage.setItem('adminViewMode', mode); } catch {}
+      }
+
+      const savedMode = (() => { try { return localStorage.getItem('adminViewMode'); } catch { return null; } })();
+      setView(savedMode || 'table');
+      btnTable.addEventListener('click', () => setView('table'));
+      btnCards.addEventListener('click', () => setView('cards'));
+
+      const pricePopover = document.getElementById('price-popover');
+      const priceInput = document.getElementById('price-input-popover');
+      const priceSaveBtn = document.getElementById('price-save-btn');
+      const priceCancelBtn = document.getElementById('price-cancel-btn');
+      let currentPriceBadge = null; // track which badge is being edited
+
+      function showPricePopover(badge, id) {
+        currentPriceBadge = badge;
+        pricePopover.dataset.id = String(id);
+        const txt = badge.textContent.trim();
+        priceInput.value = (txt === '--') ? '' : txt;
+        // position near badge
+        const rect = badge.getBoundingClientRect();
+        const top = rect.bottom + window.scrollY + 6;
+        const left = rect.left + window.scrollX;
+        pricePopover.style.top = `${top}px`;
+        pricePopover.style.left = `${left}px`;
+        pricePopover.style.display = 'block';
+        // focus input
+        setTimeout(() => { priceInput.focus(); priceInput.select(); }, 0);
+      }
+
+      function hidePricePopover() {
+        pricePopover.style.display = 'none';
+        pricePopover.dataset.id = '';
+        currentPriceBadge = null;
+      }
+
+      async function savePriceFromPopover() {
+        const id = Number(pricePopover.dataset.id || '');
+        if (!id || !currentPriceBadge) { hidePricePopover(); return; }
+        const val = priceInput.value.trim();
+        const price = val === '' ? null : Number(val);
+        if (price !== null && Number.isNaN(price)) {
+          // soft validation feedback
+          priceInput.style.borderColor = '#ef4444';
+          return;
+        }
+        try {
+          const res = await fetch('/api/edit_price', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id, price }),
+          });
+          const json = await res.json();
+          if (json.success) {
+            currentPriceBadge.textContent = (price == null) ? '--' : price.toFixed(2);
+            hidePricePopover();
+          } else {
+            // minimal inline error
+            priceInput.style.borderColor = '#ef4444';
+          }
+        } catch {
+          priceInput.style.borderColor = '#ef4444';
+        }
+      }
+
+      document.addEventListener('click', async (e) => {
+        const target = e.target;
+        // Close modal first without requiring item context
+        if (target.dataset.action === 'close-modal') {
+          const modal = document.getElementById('image-modal');
+          if (modal) modal.style.display = 'none';
+          return;
+        }
+        // Close popover when clicking outside
+        if (pricePopover.style.display === 'block') {
+          const insidePopover = target === pricePopover || pricePopover.contains(target);
+          const isBadge = target.classList && target.classList.contains('price-badge');
+          if (!insidePopover && !isBadge) hidePricePopover();
+        }
+        const item = findItem(target);
+        if (!item) return;
+        const id = Number(item.getAttribute('data-id'));
+
+        // Edit price via badge -> open popover (before modal)
+        if (target.classList.contains('price-badge')) {
+          showPricePopover(target, id);
+          return;
+        }
+
+        // Open modal on card image click
+        if (target.dataset.action === 'open-modal' || (target.closest && target.closest('[data-action="open-modal"]'))) {
+          const imgEl = item.querySelector('.card-image img');
+          const modal = document.getElementById('image-modal');
+          const modalImg = document.getElementById('modal-img');
+          if (imgEl && modal && modalImg) {
+            modalImg.src = imgEl.src;
+            modal.style.display = 'flex';
+          }
+          return; // do not process other actions for this click
+        }
+
+        // (removed duplicate prompt-based price edit)
+
+        if (target.dataset.action === 'set-status') {
+          const status = target.dataset.status;
+          try {
+            const res = await fetch('/api/set_status', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ id, status }),
+            });
+            const json = await res.json();
+            if (json.success) {
+              // Update UI inline
+              const statusEl = item.querySelector('.status');
+              if (statusEl) statusEl.textContent = status;
+              const badge = item.querySelector('.status-badge');
+              if (badge) {
+                badge.textContent = status;
+                badge.classList.remove('status-pending', 'status-approved', 'status-trash');
+                badge.classList.add('status-' + status);
+              }
+            } else {
+              alert('Failed: ' + (json.error || 'Unknown error'));
+            }
+          } catch (err) {
+            alert('Network error');
+          }
+        }
+
+        if (target.dataset.action === 'save-price') {
+          const input = item.querySelector('.price-input');
+          const price = input.value === '' ? null : Number(input.value);
+          try {
+            const res = await fetch('/api/edit_price', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ id, price }),
+            });
+            const json = await res.json();
+            if (json.success) {
+              const priceBadge = item.querySelector('.price-badge');
+              if (priceBadge) {
+                priceBadge.textContent = (price == null) ? '--' : price.toFixed(2);
+              }
+            } else {
+              alert('Failed: ' + (json.error || 'Unknown error'));
+            }
+          } catch (err) {
+            alert('Network error');
+          }
+        }
+      });
+
+      // Close modal on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          const modal = document.getElementById('image-modal');
+          if (modal) modal.style.display = 'none';
+          hidePricePopover();
+        }
+        if (e.key === 'Enter' && pricePopover.style.display === 'block') {
+          e.preventDefault();
+          savePriceFromPopover();
+        }
+      });
+
+      priceSaveBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        savePriceFromPopover();
+      });
+      priceCancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        hidePricePopover();
+      });
+    </script>
+  </body>
+  </html>

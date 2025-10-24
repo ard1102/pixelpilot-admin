@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - WA_PHONE=${WA_PHONE}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

@@ -1,0 +1,57 @@
+# Python / Flask
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Distribution / build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Logs and temp
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Environment and secrets
+.env
+.env.*
+*.env
+!.env.example
+secrets.*
+*.pem
+*.key
+*.crt
+*.der
+
+# SQLite databases
+*.sqlite
+*.sqlite3
+site.db
+
+# SSH keys (deployment)
+deployment/*_ssh_key
+deployment/*_ssh_key.pub
+
+# Docker overrides
+docker-compose.override.yml
