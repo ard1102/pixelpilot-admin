@@ -57,8 +57,8 @@ Simple admin dashboard and public gallery for triaging images. Includes table an
 - For production, consider mounting only `images/` and `site.db`, or baking assets into the image.
 
 ## Data Sync
-- Keep the repository clean by syncing `images/` and `site.db` rather than committing them.
-- `site.db` is ignored by `.gitignore`; `images/` can be synced separately.
+- `site.db` can be committed to Git to share a starter dataset; `images/` are best synced separately to keep the repo lean.
+- By default, `images/` are ignored; you can still sync them to the server using the commands below.
 
 ### Sync from local (Windows → Ubuntu server)
 - Copy images:

@@ -47,7 +47,6 @@ secrets.*
 # SQLite databases
 *.sqlite
 *.sqlite3
-site.db
 
 # SSH keys (deployment)
 deployment/*_ssh_key
