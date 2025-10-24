@@ -55,3 +55,7 @@ deployment/*_ssh_key.pub
 
 # Docker overrides
 docker-compose.override.yml
+
+# Images (sync externally; keep repo lean)
+images/*
+!images/.gitkeep

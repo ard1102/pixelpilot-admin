@@ -8,6 +8,16 @@ Simple admin dashboard and public gallery for triaging images. Includes table an
 - Admin dashboard at `GET /admin` (token required) supports approving, pending, trash, and price editing.
 - Images are tracked in `site.db` (SQLite).
 
+## Purpose
+- Prototype to support Indian women saree entrepreneurs, starting with my aunt’s business.
+- Share URLs instead of forwarding many images; clients view, pick, and contact on WhatsApp.
+- Reduce friction and time spent by dealers managing vendor-to-client image flows.
+
+## Roadmap
+- Event-driven tracking of most viewed/liked designs to boost reach and sales.
+- WhatsApp AI agent to answer queries and assist clients and dealers.
+- Better analytics dashboards and filters for categories and price ranges.
+
 ## Prerequisites
 - Python 3.11+
 - Docker (optional, for containerized run)
@@ -45,6 +55,26 @@ Simple admin dashboard and public gallery for triaging images. Includes table an
 - The compose file mounts your project into the container: ``.:/app``.
 - This means files in `images/` and `site.db` are accessed directly by the container with no copy step.
 - For production, consider mounting only `images/` and `site.db`, or baking assets into the image.
+
+## Data Sync
+- Keep the repository clean by syncing `images/` and `site.db` rather than committing them.
+- `site.db` is ignored by `.gitignore`; `images/` can be synced separately.
+
+### Sync from local (Windows → Ubuntu server)
+- Copy images:
+  - `scp -r images rd@192.168.0.100:/home/rd/photo-admin/images`
+- Copy database:
+  - `scp site.db rd@192.168.0.100:/home/rd/photo-admin/site.db`
+- Ingest or refresh images in the app:
+  - `cd /home/rd/photo-admin && docker compose exec web python load_images.py`
+
+### Sync from local (Linux/macOS → Ubuntu server)
+- Copy images:
+  - `rsync -av --progress images/ rd@192.168.0.100:/home/rd/photo-admin/images/`
+- Copy database:
+  - `scp site.db rd@192.168.0.100:/home/rd/photo-admin/site.db`
+- Ingest images:
+  - `ssh rd@192.168.0.100 "cd /home/rd/photo-admin && docker compose exec web python load_images.py"`
 
 ## Admin Dashboard
 - Access: `http://localhost:5000/admin?token=admin123`
@@ -136,3 +166,12 @@ services:
 - Edit Docker Compose in the app, Save, and Redeploy when `docker-compose.yml` changes.
 - Redeploy (force rebuild) when `Dockerfile` or `requirements.txt` changes.
 - Add or edit images under `images/` on the server; ingest with `docker compose exec web python load_images.py`.
+
+## Publish (GitHub)
+- Using GitHub CLI:
+  - `gh repo create pixelpilot-admin --public --source . --remote origin --push`
+- Using plain Git:
+  - `git branch -M main`
+  - `git remote add origin https://github.com/<your-username>/<repo-name>.git`
+  - `git push -u origin main`
+- Ensure `.gitignore` keeps `site.db` (and optionally `images/`) out of the repo. Sync data to servers as documented above.
